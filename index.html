@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1d4ed8"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Targhe">
+<title>Verifica Targhe – Prototipo</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f3f5f9;--card:#fff;--tx:#14213d;--mu:#5b6678;--pr:#1d4ed8;--ok:#15803d;--ko:#b91c1c;--wa:#b45309;--bd:#dde2ec}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1420;--card:#18202f;--tx:#e8edf7;--mu:#98a3b8;--pr:#6b95ff;--ok:#4ade80;--ko:#f87171;--wa:#fbbf24;--bd:#2a3447}}
+:root[data-theme="dark"]{--bg:#0e1420;--card:#18202f;--tx:#e8edf7;--mu:#98a3b8;--pr:#6b95ff;--ok:#4ade80;--ko:#f87171;--wa:#fbbf24;--bd:#2a3447}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.4}
+.wrap{max-width:480px;margin:0 auto;padding:14px}
+.demo{background:var(--wa);color:#fff;text-align:center;font-size:12px;padding:6px;font-weight:600;letter-spacing:.3px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:12px}
+h1{font-size:19px;margin:0 0 4px}h2{font-size:15px;margin:0 0 10px}
+.mu{color:var(--mu);font-size:13px}
+input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font-size:16px;margin:6px 0}
+button{background:var(--pr);color:#fff;border:0;border-radius:10px;padding:12px 16px;font-size:16px;font-weight:600;width:100%;margin-top:6px}
+button.sec{background:transparent;color:var(--pr);border:1px solid var(--bd)}
+.plate{font-family:ui-monospace,Menlo,monospace;font-size:28px;text-align:center;letter-spacing:4px;text-transform:uppercase}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.top button{width:auto;padding:6px 12px;font-size:13px;margin:0}
+.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px}
+.row:last-child{border:0}.row b{text-align:right}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;color:#fff}
+.ok{background:var(--ok)}.ko{background:var(--ko)}.wa{background:var(--wa)}
+.err{color:var(--ko);font-size:14px;min-height:20px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{background:var(--card);color:var(--tx);border:1px solid var(--bd);font-size:14px;padding:9px}
+.tabs button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+.hide{display:none}
+.log{font-size:13px;padding:7px 0;border-bottom:1px solid var(--bd)}
+.cam{position:fixed;inset:0;background:#000;z-index:9;display:flex;flex-direction:column}
+.cam video{flex:1;width:100%;object-fit:cover;min-height:0}
+.guide{position:absolute;left:8%;right:8%;top:32%;height:18%;border:3px solid #fff;border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.45)}
+.cbar{padding:12px;display:flex;gap:10px;background:#000;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.cmsg{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:0;right:0;text-align:center;color:#fff;font-size:14px;padding:0 16px}
+.ghost{background:transparent;color:var(--pr);border:1px dashed var(--pr)}
+#inst{display:none}
+</style>
+</head>
+<body>
+<div class="demo">PROTOTIPO – DATI DI PROVA, NESSUN COLLEGAMENTO UFFICIALE</div>
+<div class="wrap">
+
+<div id="login" class="card">
+  <h1>Verifica Targhe</h1>
+  <p class="mu">Accesso riservato agli operatori autorizzati.</p>
+  <input id="mat" placeholder="Matricola (es. PL001)" autocapitalize="characters" autocomplete="off">
+  <input id="pin" type="password" inputmode="numeric" placeholder="PIN">
+  <div class="err" id="lerr"></div>
+  <button onclick="login()">Accedi</button>
+  <p class="mu">Demo: PL001 / 1234 &nbsp;·&nbsp; PL002 / 5678</p>
+</div>
+
+<div id="app" class="hide">
+  <div class="top"><div><b id="who"></b><div class="mu">Sessione attiva</div></div><button class="sec" onclick="logout()">Esci</button></div>
+  <div class="tabs"><button id="t1" class="on" onclick="tab(1)">Verifica</button><button id="t2" onclick="tab(2)">Registro accessi</button></div>
+
+  <div id="p1">
+    <div class="card">
+      <h2>Inserisci targa</h2>
+      <input id="targa" class="plate" maxlength="7" placeholder="AB123CD" autocomplete="off" onkeydown="if(event.key==='Enter')cerca()">
+      <div class="err" id="terr"></div>
+      <button onclick="cerca()">Verifica</button>
+      <button class="sec" onclick="apriCam()">📷 Scansiona targa</button>
+      <p class="mu">Prova: <a href="#" onclick="q('AB123CD');return false">AB123CD</a> · <a href="#" onclick="q('FK404XY');return false">FK404XY</a> · <a href="#" onclick="q('GT777ZZ');return false">GT777ZZ</a></p>
+    </div>
+    <div id="res"></div>
+  </div>
+
+  <div id="p2" class="hide"><div class="card"><h2>Ultime consultazioni</h2><div id="logs"></div>
+    <p class="mu">Ogni ricerca viene registrata con operatore, targa e orario.</p></div></div>
+</div>
+<div class="card" id="inst"><h2>Installa sul telefono</h2><p class="mu" id="insttxt"></p><button id="instbtn" class="hide" onclick="installa()">Installa app</button></div>
+</div>
+
+<div id="cam" class="cam hide"><div class="cmsg" id="cmsg">Inquadra la targa nel riquadro</div><video id="vid" playsinline muted></video><div class="guide"></div>
+<div class="cbar"><button class="sec" style="color:#fff;border-color:#555" onclick="chiudiCam()">Annulla</button><button id="shot" onclick="scatta()">Scatta</button></div></div>
+
+<script src="lib/tesseract.min.js" onerror="void 0"></script>
+<script>
+/* ---- Utenti autorizzati (in produzione: lato server) ---- */
+const UTENTI={PL001:{pin:"1234",nome:"Agente Rossi"},PL002:{pin:"5678",nome:"Agente Bianchi"}};
+
+/* ---- Connettore intercambiabile: oggi dati finti, domani servizio ufficiale ---- */
+const Connettore={
+  async cerca(targa){
+    await new Promise(r=>setTimeout(r,500));
+    const fissi={
+      AB123CD:{modello:"Fiat Panda 1.2",anno:2019,alim:"Benzina",ass:"2027-03-14",rev:"2027-05-31"},
+      FK404XY:{modello:"Volkswagen Golf 2.0 TDI",anno:2015,alim:"Diesel",ass:"2026-01-10",rev:"2025-09-30"},
+      GT777ZZ:{modello:"Renault Clio 1.0",anno:2021,alim:"Benzina",ass:"2026-11-02",rev:"2026-10-20"}
+    };
+    if(fissi[targa])return fissi[targa];
+    let h=0;for(const c of targa)h=(h*31+c.charCodeAt(0))>>>0;
+    const mod=["Fiat 500","Ford Fiesta","Toyota Yaris","Opel Corsa","Peugeot 208"][h%5];
+    const d=n=>{const x=new Date(2026,9,10);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+    return{modello:mod,anno:2012+h%12,alim:["Benzina","Diesel","Ibrida"][h%3],ass:d((h%400)-120),rev:d((h%700)-200)};
+  }
+};
+
+const OGGI=new Date("2026-10-10");
+let utente=null,logv=[];
+const $=id=>document.getElementById(id);
+const fmt=s=>s.split("-").reverse().join("/");
+
+function stato(data){
+  const g=Math.round((new Date(data)-OGGI)/864e5);
+  if(g<0)return{c:"ko",t:"SCADUTA da "+(-g)+" gg"};
+  if(g<=30)return{c:"wa",t:"In scadenza ("+g+" gg)"};
+  return{c:"ok",t:"Valida"};
+}
+function login(){
+  const m=$("mat").value.trim().toUpperCase(),u=UTENTI[m];
+  if(!u||u.pin!==$("pin").value){$("lerr").textContent="Credenziali non valide o utente non autorizzato.";return}
+  utente={mat:m,nome:u.nome};$("who").textContent=u.nome+" ("+m+")";
+  $("login").classList.add("hide");$("app").classList.remove("hide");$("lerr").textContent="";
+}
+function logout(){utente=null;$("pin").value="";$("res").innerHTML="";$("app").classList.add("hide");$("login").classList.remove("hide")}
+function tab(n){
+  $("p1").classList.toggle("hide",n!==1);$("p2").classList.toggle("hide",n!==2);
+  $("t1").classList.toggle("on",n===1);$("t2").classList.toggle("on",n===2);
+  if(n===2)$("logs").innerHTML=logv.length?logv.map(l=>`<div class="log"><b>${l.t}</b> · ${l.o}<br><span class="mu">${l.h}</span></div>`).join(""):'<p class="mu">Nessuna consultazione in questa sessione.</p>';
+}
+function q(t){$("targa").value=t;cerca()}
+async function cerca(){
+  const t=$("targa").value.trim().toUpperCase();
+  if(!/^[A-Z]{2}[0-9]{3}[A-Z]{2}$/.test(t)){$("terr").textContent="Formato non valido (es. AB123CD).";return}
+  $("terr").textContent="";$("res").innerHTML='<div class="card mu">Interrogazione in corso…</div>';
+  const d=await Connettore.cerca(t);
+  logv.unshift({t,o:utente.nome+" ("+utente.mat+")",h:new Date().toLocaleString("it-IT")});
+  const a=stato(d.ass),r=stato(d.rev);
+  $("res").innerHTML=`<div class="card"><h2>${t}</h2>
+  <div class="row"><span>Modello</span><b>${d.modello}</b></div>
+  <div class="row"><span>Immatricolazione</span><b>${d.anno}</b></div>
+  <div class="row"><span>Alimentazione</span><b>${d.alim}</b></div>
+  <div class="row"><span>Assicurazione</span><b><span class="badge ${a.c}">${a.t}</span><br><span class="mu">scad. ${fmt(d.ass)}</span></b></div>
+  <div class="row"><span>Revisione</span><b><span class="badge ${r.c}">${r.t}</span><br><span class="mu">scad. ${fmt(d.rev)}</span></b></div>
+  <p class="mu">Dati di prova generati localmente.</p></div>`;
+}
+
+/* ---- Scansione targa ---- */
+let stream=null,worker=null;
+async function apriCam(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("terr").textContent="Fotocamera non disponibile: serve una connessione HTTPS.";return}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920}},audio:false});}
+  catch(e){$("terr").textContent="Permesso fotocamera negato o non disponibile.";return}
+  $("vid").srcObject=stream;await $("vid").play();$("cam").classList.remove("hide");$("cmsg").textContent="Inquadra la targa nel riquadro";$("shot").disabled=false;
+}
+function chiudiCam(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$("cam").classList.add("hide")}
+const L2D={O:"0",Q:"0",D:"0",I:"1",L:"1",Z:"2",S:"5",G:"6",B:"8"},D2L={0:"D",1:"L",2:"Z",5:"S",6:"G",8:"B"};
+function trovaTarga(txt){
+  const s=txt.toUpperCase().replace(/[^A-Z0-9]/g,"");
+  for(let i=0;i+7<=s.length;i++){
+    const w=s.slice(i,i+7).split("").map((c,k)=>{const num=k>=2&&k<=4;return num?(L2D[c]||c):(D2L[c]||c)}).join("");
+    if(/^[A-Z]{2}[0-9]{3}[A-Z]{2}$/.test(w))return w;
+  }
+  return null;
+}
+async function scatta(){
+  const v=$("vid");if(!v.videoWidth)return;
+  $("shot").disabled=true;$("cmsg").textContent="Lettura in corso…";
+  const W=v.videoWidth,H=v.videoHeight;
+  /* il riquadro guida copre ~84% della larghezza e 18% dell'altezza visibile; ritaglio generoso al centro */
+  const cw=W*.9,ch=H*.34,cx=(W-cw)/2,cy=H*.28;
+  const cv=document.createElement("canvas");cv.width=cw;cv.height=ch;
+  const g=cv.getContext("2d");g.filter="grayscale(1) contrast(1.4)";g.drawImage(v,cx,cy,cw,ch,0,0,cw,ch);
+  let targa=null;
+  try{
+    if(window.Tesseract){
+      if(!worker){worker=await Tesseract.createWorker("eng",1,{workerPath:"lib/worker.min.js",corePath:"lib/",langPath:"lib/lang/",gzip:true});
+        await worker.setParameters({tessedit_char_whitelist:"ABCDEFGHJKLMNPRSTVWXYZ0123456789",tessedit_pageseg_mode:"7"});}
+      const r=await worker.recognize(cv);targa=trovaTarga(r.data.text);
+    }else if("TextDetector" in window){
+      const t=await new TextDetector().detect(cv);targa=trovaTarga(t.map(x=>x.rawValue).join(""));
+    }else{$("cmsg").textContent="Lettura automatica non disponibile su questa versione: digita la targa.";setTimeout(chiudiCam,1800);return}
+  }catch(e){}
+  if(targa){chiudiCam();$("targa").value=targa;$("terr").textContent="Letta: "+targa+" – controlla e premi Verifica.";}
+  else{$("cmsg").textContent="Targa non letta, riprova con più luce e più vicino.";$("shot").disabled=false}
+}
+
+/* ---- Installazione PWA ---- */
+let evInst=null;
+const ios=/iphone|ipad/i.test(navigator.userAgent),standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+if(!standalone){
+  $("inst").style.display="block";
+  $("insttxt").textContent=ios?"Su iPhone: tocca il tasto Condividi di Safari, poi «Aggiungi a Home».":"Su Android apri il menu di Chrome (⋮) e scegli «Installa app» / «Aggiungi a schermata Home».";
+}
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();evInst=e;$("instbtn").classList.remove("hide");$("insttxt").textContent="Aggiungi l'app alla schermata Home per aprirla a schermo intero."});
+async function installa(){if(!evInst)return;evInst.prompt();await evInst.userChoice;evInst=null;$("instbtn").classList.add("hide")}
+try{if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}
+</script>
+</body>
+</html>
